@@ -1,0 +1,33 @@
+{
+  "name": "synergetics-tui-ink",
+  "version": "1.0.0",
+  "description": "Terminal UI for Synergetics Dictionary using Ink",
+  "main": "index.tsx",
+  "type": "module",
+  "bin": {
+    "synergetics-tui": "./index.tsx"
+  },
+  "scripts": {
+    "start": "tsx index.tsx",
+    "dev": "tsx watch index.tsx"
+  },
+  "keywords": [
+    "synergetics",
+    "tui",
+    "terminal",
+    "ink",
+    "react"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "better-sqlite3": "^12.6.2",
+    "ink": "^6.7.0",
+    "ink-select-input": "^6.2.0",
+    "ink-text-input": "^6.0.0",
+    "react": "^19.2.4"
+  },
+  "devDependencies": {
+    "tsx": "^4.21.0"
+  }
+}

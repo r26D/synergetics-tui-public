@@ -1,0 +1,28 @@
+# Database files (except schema)
+data/synergetics_dictionary.db
+data/synergetics_dictionary.db-shm
+data/synergetics_dictionary.db-wal
+
+# Elixir
+synergetics_tui/_build/
+synergetics_tui/deps/
+synergetics_tui/*.ez
+synergetics_tui/synergetics_tui
+
+# Node.js
+synergetics-tui-ink/node_modules/
+synergetics-tui-ink/npm-debug.log*
+synergetics-tui-ink/yarn-debug.log*
+synergetics-tui-ink/yarn-error.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
