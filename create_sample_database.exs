@@ -2,7 +2,10 @@
 # Create a sample Synergetics Dictionary database for testing the TUI applications
 #
 # Usage:
-#   elixir create_sample_database.exs
+#   elixir create_sample_database.exs [source_db_path]
+#
+# If source_db_path is provided, copies all letter group 'a' cards from that database.
+# Otherwise, creates a minimal sample database with a few example cards.
 #
 # Creates: data/synergetics_dictionary.db with sample cards
 
@@ -12,35 +15,149 @@ defmodule SampleDatabase do
   def run do
     # Ensure data directory exists
     File.mkdir_p!("data")
-    
+
     db_path = "data/synergetics_dictionary.db"
     schema_path = "data/schema.sql"
-    
+    source_db_path = System.argv() |> List.first()
+
     # Remove old database if it exists
     if File.exists?(db_path), do: File.rm!(db_path)
-    
+
     IO.puts("Creating sample database: #{db_path}")
-    
+
     # Apply schema using sqlite3 CLI
     {_output, 0} = System.cmd("sqlite3", [db_path, ".read #{schema_path}"])
-    
+
     # Open database connection
     {:ok, conn} = Exqlite.Sqlite3.open(db_path)
-    
-    IO.puts("Inserting sample cards...")
-    
-    # Insert sample cards
-    insert_sample_cards(conn)
-    
+
+    # Check if we should copy from source database
+    if source_db_path && File.exists?(source_db_path) do
+      IO.puts("Copying letter group 'a' cards from: #{source_db_path}")
+      copy_letter_group_a(conn, source_db_path)
+    else
+      if source_db_path do
+        IO.puts("⚠ Source database not found: #{source_db_path}")
+        IO.puts("Creating minimal sample database instead...")
+      else
+        IO.puts("Creating minimal sample database...")
+      end
+      insert_sample_cards(conn)
+    end
+
     # Close connection
     Exqlite.Sqlite3.close(conn)
-    
+
     IO.puts("\n✅ Sample database created successfully!")
     IO.puts("   Location: #{db_path}")
-    IO.puts("   Cards: 25 sample cards")
     IO.puts("\nYou can now run the TUI applications:")
     IO.puts("   ./run_tui.sh          (Elixir TUI)")
     IO.puts("   ./run_tui_ink.sh      (Ink/React TUI)")
+  end
+
+  defp copy_letter_group_a(dest_conn, source_db_path) do
+    # Open source database
+    {:ok, source_conn} = Exqlite.Sqlite3.open(source_db_path)
+
+    # Get all cards from letter group 'a'
+    cards_query = """
+    SELECT id, card_number, title, letter_group, volume, card_type,
+           reference_level, reference_level_label, content_text,
+           definition_text, image_path, sort_order, needs_review,
+           review_notes, reviewed_at
+    FROM cards
+    WHERE letter_group = 'a'
+    ORDER BY card_number
+    """
+
+    {:ok, statement} = Exqlite.Sqlite3.prepare(source_conn, cards_query)
+    cards = fetch_all_rows(source_conn, statement)
+    Exqlite.Sqlite3.release(source_conn, statement)
+
+    IO.puts("  Found #{length(cards)} cards in letter group 'a'")
+
+    # Insert cards
+    Enum.each(cards, fn card ->
+      [id, card_number, title, letter_group, volume, card_type,
+       reference_level, reference_level_label, content_text,
+       definition_text, image_path, sort_order, needs_review,
+       review_notes, reviewed_at] = card
+
+      execute(dest_conn,
+        "INSERT INTO cards (id, card_number, title, letter_group, volume, card_type,
+                           reference_level, reference_level_label, content_text,
+                           definition_text, image_path, sort_order, needs_review,
+                           review_notes, reviewed_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        [id, card_number, title, letter_group, volume, card_type,
+         reference_level, reference_level_label, content_text,
+         definition_text, image_path, sort_order, needs_review,
+         review_notes, reviewed_at]
+      )
+    end)
+
+    IO.puts("  ✓ Inserted #{length(cards)} cards")
+
+    # Copy see_links for these cards
+    see_links_query = """
+    SELECT id, source_card_id, target_card_id, display_text, line_content,
+           date_annotation, reference_levels, sort_order
+    FROM see_links
+    WHERE source_card_id IN (SELECT id FROM cards WHERE letter_group = 'a')
+    """
+
+    {:ok, statement} = Exqlite.Sqlite3.prepare(source_conn, see_links_query)
+    see_links = fetch_all_rows(source_conn, statement)
+    Exqlite.Sqlite3.release(source_conn, statement)
+
+    Enum.each(see_links, fn link ->
+      [_id, source_card_id, target_card_id, display_text, line_content,
+       date_annotation, reference_levels, sort_order] = link
+
+      execute(dest_conn,
+        "INSERT INTO see_links (source_card_id, target_card_id, display_text,
+                               line_content, date_annotation, reference_levels, sort_order)
+         VALUES (?, ?, ?, ?, ?, ?, ?)",
+        [source_card_id, target_card_id, display_text, line_content,
+         date_annotation, reference_levels, sort_order]
+      )
+    end)
+
+    IO.puts("  ✓ Inserted #{length(see_links)} see links")
+
+    # Copy citations for these cards
+    citations_query = """
+    SELECT id, card_id, citation_text, source_type, source_title, date, page, sort_order
+    FROM citations
+    WHERE card_id IN (SELECT id FROM cards WHERE letter_group = 'a')
+    """
+
+    {:ok, statement} = Exqlite.Sqlite3.prepare(source_conn, citations_query)
+    citations = fetch_all_rows(source_conn, statement)
+    Exqlite.Sqlite3.release(source_conn, statement)
+
+    Enum.each(citations, fn citation ->
+      [_id, card_id, citation_text, source_type, source_title, date, page, sort_order] = citation
+
+      execute(dest_conn,
+        "INSERT INTO citations (card_id, citation_text, source_type, source_title,
+                               date, page, sort_order)
+         VALUES (?, ?, ?, ?, ?, ?, ?)",
+        [card_id, citation_text, source_type, source_title, date, page, sort_order]
+      )
+    end)
+
+    IO.puts("  ✓ Inserted #{length(citations)} citations")
+
+    # Close source connection
+    Exqlite.Sqlite3.close(source_conn)
+  end
+
+  defp fetch_all_rows(conn, statement, acc \\ []) do
+    case Exqlite.Sqlite3.step(conn, statement) do
+      {:row, row} -> fetch_all_rows(conn, statement, [row | acc])
+      :done -> Enum.reverse(acc)
+    end
   end
   
   defp insert_sample_cards(conn) do

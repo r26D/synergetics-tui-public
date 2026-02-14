@@ -1,7 +1,13 @@
 #!/bin/bash
 # Quick setup script for Synergetics Dictionary TUI
+#
+# Usage:
+#   ./setup.sh                                    # Create minimal sample database
+#   ./setup.sh /path/to/synergetics_dictionary.db # Copy letter group 'a' from source
 
 set -e
+
+SOURCE_DB="$1"
 
 echo "========================================="
 echo "Synergetics Dictionary TUI - Setup"
@@ -46,8 +52,20 @@ echo ""
 # Create database if it doesn't exist
 if [ ! -f "data/synergetics_dictionary.db" ]; then
     if [ "$HAS_ELIXIR" = true ] && [ "$HAS_SQLITE" = true ]; then
-        echo "Creating sample database..."
-        elixir create_sample_database.exs
+        if [ -n "$SOURCE_DB" ]; then
+            if [ -f "$SOURCE_DB" ]; then
+                echo "Creating database with letter group 'a' from: $SOURCE_DB"
+                elixir create_sample_database.exs "$SOURCE_DB"
+            else
+                echo "⚠ Source database not found: $SOURCE_DB"
+                echo "Creating minimal sample database instead..."
+                elixir create_sample_database.exs
+            fi
+        else
+            echo "Creating minimal sample database..."
+            echo "(To include full letter group 'a', run: ./setup.sh /path/to/synergetics_dictionary.db)"
+            elixir create_sample_database.exs
+        fi
         echo ""
     else
         echo "⚠ Cannot create database: Elixir and SQLite3 are required"

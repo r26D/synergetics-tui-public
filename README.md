@@ -36,11 +36,20 @@ Both TUIs provide:
    ```
 
 2. **Create the sample database:**
+
+   **Option A: Minimal sample (15 cards)**
    ```bash
    elixir create_sample_database.exs
    ```
-   
-   This creates `data/synergetics_dictionary.db` with 15 sample cards for testing.
+
+   **Option B: Full letter group 'a' (1,051 cards)**
+
+   If you have access to the full Synergetics Dictionary database:
+   ```bash
+   elixir create_sample_database.exs /path/to/synergetics_dictionary.db
+   ```
+
+   This creates `data/synergetics_dictionary.db` with all 1,051 cards from letter group 'a', including their see links and citations.
 
 3. **Run either TUI:**
 
@@ -53,6 +62,31 @@ Both TUIs provide:
    ```bash
    ./run_tui_ink.sh
    ```
+
+## 📦 Sample Database
+
+The repository includes a script to create a sample database for testing. You have two options:
+
+### Minimal Sample (15 cards)
+Perfect for quick testing and development:
+```bash
+elixir create_sample_database.exs
+```
+
+Creates a small database with representative cards from different letter groups.
+
+### Full Letter Group 'a' (1,051 cards)
+For a more realistic testing experience with the full first letter group:
+```bash
+elixir create_sample_database.exs /path/to/full/synergetics_dictionary.db
+```
+
+This copies all 1,051 cards from letter group 'a', including:
+- All card content and metadata
+- 1,349 see links (cross-references)
+- 344 bibliographic citations
+
+This provides a substantial dataset for testing pagination, search, and navigation features.
 
 ## 📖 Usage
 
