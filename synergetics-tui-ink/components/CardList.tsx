@@ -6,6 +6,9 @@ export default function CardList({
   selectedIndex,
   onSelect,
   onSearch,
+  onJump,
+  onClearSearch,
+  searchQuery,
   onNextPage,
   onPrevPage,
   onQuit,
@@ -20,13 +23,17 @@ export default function CardList({
       onQuit();
     } else if (input === 'r') {
       onRefresh();
-    } else if (input === 'j' || key.downArrow) {
+    } else if (key.escape && searchQuery) {
+      onClearSearch();
+    } else if (input === 'g') {
+      onJump();
+    } else if (input === 's' || key.downArrow) {
       onNavigate('down');
-    } else if (input === 'k' || key.upArrow) {
+    } else if (input === 'w' || key.upArrow) {
       onNavigate('up');
-    } else if (input === 'n' || key.rightArrow) {
+    } else if (input === 'd' || key.rightArrow) {
       onNextPage();
-    } else if (input === 'p' || key.leftArrow) {
+    } else if (input === 'a' || key.leftArrow) {
       onPrevPage();
     } else if (input === '/') {
       onSearch();
@@ -69,7 +76,10 @@ export default function CardList({
 
       <Box borderStyle="single" borderColor="gray" paddingX={1}>
         <Text dimColor>
-          j/k or ↑/↓: Navigate | Enter: View | /: Search | n/p or ←/→: Next/Prev Page | r: Refresh | q: Quit
+          {searchQuery
+            ? 'Esc: Clear search | w/s/↑/↓: Navigate | Enter: View | g: Go | /: New search | a/d/←/→: Prev/Next Page | r: Refresh | q: Quit'
+            : 'w/s/↑/↓: Navigate | Enter: View | g: Go | /: Search | a/d/←/→: Prev/Next Page | r: Refresh | q: Quit'
+          }
         </Text>
       </Box>
     </Box>

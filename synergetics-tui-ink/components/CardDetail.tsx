@@ -1,14 +1,31 @@
 import React from 'react';
 import { Box, Text, useInput } from 'ink';
 
-export default function CardDetail({ card, onBack, onQuit }) {
+export default function CardDetail({ card, onBack, onQuit, onNavigateToCard }) {
+  const seeLinks = Array.isArray(card.see_links) ? card.see_links : [];
+  const navigableLinks = seeLinks.filter(link => link.target_card_id);
+
   useInput((input, key) => {
     if (input === 'q') {
       onQuit();
-    } else if (input === 'b' || key.leftArrow) {
+    } else if (input === 'b' || input === 'a' || key.leftArrow || key.escape) {
       onBack();
+    } else if (onNavigateToCard && navigableLinks.length > 0) {
+      const num = parseInt(input, 10);
+      if (num >= 1 && num <= 9 && num <= navigableLinks.length) {
+        const link = navigableLinks[num - 1];
+        if (link?.target_card_id) {
+          onNavigateToCard(link.target_card_id);
+        }
+      }
     }
   });
+
+  const stripLatexHyperref = (text) => {
+    if (!text || typeof text !== 'string') return '';
+    const m = text.match(/\\hyperref\[[^\]]*\]\{([^{}]*)\}/);
+    return m ? m[1] : text;
+  };
 
   const truncate = (text, maxLength) => {
     if (!text) return '';
@@ -44,10 +61,35 @@ export default function CardDetail({ card, onBack, onQuit }) {
           <Text>{card.content_text || '(no content)'}</Text>
         </Box>
 
-        {card.see_links && (
-          <Box marginTop={1}>
-            <Text bold color="yellow">See Also: </Text>
-            <Text>{card.see_links}</Text>
+        {seeLinks.length > 0 && (
+          <Box marginTop={1} flexDirection="column">
+            <Box marginBottom={1}>
+              <Text bold color="yellow">See Also: </Text>
+              {navigableLinks.length > 0 && (
+                <Text dimColor> (1-{Math.min(9, navigableLinks.length)}: go to card)</Text>
+              )}
+            </Box>
+            <Box flexDirection="column">
+              {seeLinks.map((link, idx) => {
+                const num = navigableLinks.indexOf(link) + 1;
+                const isNavigable = num > 0 && num <= 9;
+                const raw = link.display_text || link.line_content || '';
+                const label = stripLatexHyperref(raw) || raw || '?';
+                return (
+                  <Box key={`see-${idx}`}>
+                    {isNavigable ? (
+                      <Text color="cyan" bold>{num}. </Text>
+                    ) : (
+                      <Text dimColor>  </Text>
+                    )}
+                    <Text color={isNavigable ? 'cyan' : undefined}>{label}</Text>
+                    {!link.target_card_id && (
+                      <Text dimColor> (unresolved)</Text>
+                    )}
+                  </Box>
+                );
+              })}
+            </Box>
           </Box>
         )}
 
@@ -68,7 +110,9 @@ export default function CardDetail({ card, onBack, onQuit }) {
 
       <Box borderStyle="single" borderColor="gray" paddingX={1}>
         <Text dimColor>
-          b or ←: Back | q: Quit
+          Esc/a/b/←: Back to list
+          {navigableLinks.length > 0 && ` | 1-${Math.min(9, navigableLinks.length)}: Go to See link`}
+          {' | q: Quit'}
         </Text>
       </Box>
     </Box>

@@ -8,8 +8,8 @@
     "synergetics-tui": "./index.tsx"
   },
   "scripts": {
-    "start": "tsx index.tsx",
-    "dev": "tsx watch index.tsx"
+    "start": "NODE_OPTIONS='--max-old-space-size=4096' tsx index.tsx",
+    "dev": "NODE_OPTIONS='--max-old-space-size=4096' tsx watch index.tsx"
   },
   "keywords": [
     "synergetics",

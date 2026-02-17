@@ -10,15 +10,10 @@ A Terminal User Interface for browsing and viewing the Synergetics Dictionary, b
 - **Pagination** - Navigate through pages of results
 - **Instant response** - All keyboard shortcuts work immediately
 
-## Prerequisites
-
-- Node.js 18 or later
-- npm
-- The Synergetics Dictionary database at `../data/synergetics_dictionary.db`
-
 ## Installation
 
 ```bash
+cd synergetics-tui-ink
 npm install
 ```
 
@@ -30,7 +25,7 @@ npm install
 ./run_tui_ink.sh
 ```
 
-### From this directory:
+### From the synergetics-tui-ink directory:
 
 ```bash
 npm start
@@ -42,106 +37,81 @@ Or directly:
 node index.js
 ```
 
-### Development mode (with watch):
+## Keyboard Shortcuts
+
+### Card List View
+
+- `j` or `↓` - Move down
+- `k` or `↑` - Move up
+- `Enter` - View selected card
+- `/` - Search
+- `n` - Next page
+- `p` - Previous page
+- `q` - Quit
+
+### Card Detail View
+
+- `b` or `←` - Back to list
+- `q` - Quit
+
+### Search View
+
+- Type your query
+- `Enter` - Search
+- `Esc` - Cancel
+
+## Technology Stack
+
+- **Ink** - React-based framework for building terminal UIs
+- **React** - Component-based UI library
+- **better-sqlite3** - Fast SQLite database driver
+- **Node.js** - JavaScript runtime
+
+## Project Structure
+
+```
+synergetics-tui-ink/
+├── index.js              # Main application entry point
+├── database.js           # Database access layer
+├── components/
+│   ├── CardList.js       # Card list view component
+│   ├── CardDetail.js     # Card detail view component
+│   └── SearchInput.js    # Search input component
+├── package.json          # Node.js package configuration
+└── README.md            # This file
+```
+
+## Database
+
+Connects to `../data/synergetics_dictionary.db` (SQLite database with 21,188 cards).
+
+## Comparison with Elixir TUI
+
+This Ink-based TUI provides similar functionality to the Elixir version but with:
+
+- **Pros:**
+  - Easier to build with React components
+  - More familiar to JavaScript/React developers
+  - Better cross-platform support
+  - No TTY access issues (Ink handles terminal mode)
+
+- **Cons:**
+  - Slightly larger dependency footprint
+  - Node.js required instead of Elixir/Erlang
+
+## Development
+
+Watch mode (auto-reload on changes):
 
 ```bash
 npm run dev
 ```
 
-## Keyboard Shortcuts
+## License
 
-### List Mode (browsing cards)
-- `↑` / `↓` - Navigate up/down through cards
-- `Enter` - View selected card details
-- `/` - Search for cards
-- `n` - Next page
-- `p` - Previous page
-- `r` - Refresh card list
-- `q` - Quit
+ISC
 
-### Detail Mode (viewing a card)
-- `Esc` or `b` - Back to list
-- `q` - Quit
+## Version
 
-### Search Mode
-- Type your query
-- `Enter` - Submit search
-- `Esc` - Cancel search
-
-## Architecture
-
-The TUI is built with:
-- **Ink 6.7.0** - React for terminal UIs
-- **React 19.2.4** - Component framework
-- **better-sqlite3** - SQLite database driver
-- **tsx** - TypeScript/JSX transpiler for Node.js
-- **ES Modules** - Modern JavaScript
-
-### Components
-
-- `CardList` - Displays paginated list of cards with navigation
-- `CardDetail` - Shows full card details including content and links
-- `SearchInput` - Handles search query input
-
-### Database Layer
-
-- `database.js` - Provides functions for:
-  - `countCards()` - Get total card count
-  - `listCards(query, limit, offset)` - Get paginated card list
-  - `getCard(id)` - Get full card details with links and citations
-  - `closeDatabase()` - Clean up database connection
-
-## Development
-
-The application uses:
-- **TypeScript/JSX** via tsx for modern syntax
-- **ES Modules** for clean imports
-- **React hooks** for state management
-- **Ink components** for terminal rendering
-
-## Notes
-
-- This is a read-only TUI (no editing capabilities)
-- All keyboard shortcuts work instantly without pressing Enter
-- The database path is relative: `../data/synergetics_dictionary.db`
-- Uses better-sqlite3 for synchronous database access
-
-## Troubleshooting
-
-### Database Not Found
-
-```
-Error: Database not found at ../data/synergetics_dictionary.db
-```
-
-**Solution:** Create the sample database from the project root:
-```bash
-cd ..
-elixir create_sample_database.exs
-```
-
-### Module Not Found
-
-If you see module errors, make sure dependencies are installed:
-```bash
-npm install
-```
-
-### TypeScript Errors
-
-The project uses tsx which handles TypeScript/JSX automatically. No compilation step needed.
-
-## Technology Stack
-
-- **Runtime**: Node.js with tsx
-- **UI Framework**: Ink (React for CLIs)
-- **Database**: better-sqlite3
-- **Language**: TypeScript/JSX (ES Modules)
-
-## Performance
-
-- Instant keyboard response
-- Efficient pagination (loads only visible cards)
-- Synchronous database queries for simplicity
-- Minimal dependencies
+1.0.0 - Initial Release
 

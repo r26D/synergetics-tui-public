@@ -12,21 +12,21 @@ defmodule SynergeticsTui.InputHandler do
       :down ->
         new_index = min(state.selected_index + 1, length(state.cards) - 1)
         %{state | selected_index: new_index}
-      
+
       :up ->
         new_index = max(state.selected_index - 1, 0)
         %{state | selected_index: new_index}
-      
+
       :next_page ->
         new_offset = min(state.offset + @page_size, state.total_count - @page_size)
         cards = Database.list_cards(state.conn, limit: @page_size, offset: new_offset)
         %{state | offset: new_offset, cards: cards, selected_index: 0}
-      
+
       :prev_page ->
         new_offset = max(state.offset - @page_size, 0)
         cards = Database.list_cards(state.conn, limit: @page_size, offset: new_offset)
         %{state | offset: new_offset, cards: cards, selected_index: 0}
-      
+
       :enter ->
         if state.selected_index < length(state.cards) do
           card = Enum.at(state.cards, state.selected_index)
@@ -35,10 +35,13 @@ defmodule SynergeticsTui.InputHandler do
         else
           state
         end
-      
+
       :search ->
         %{state | mode: :search, search_query: "", selected_index: 0}
-      
+
+      :jump ->
+        %{state | mode: :jump, jump_buffer: ""}
+
       _ ->
         state
     end
@@ -48,10 +51,13 @@ defmodule SynergeticsTui.InputHandler do
     case input do
       :back ->
         %{state | mode: :list, current_card: nil}
-      
+
+      :escape ->
+        %{state | mode: :list, current_card: nil}
+
       :edit ->
         %{state | mode: :edit, edit_field: nil, edit_buffer: ""}
-      
+
       _ ->
         state
     end
@@ -92,6 +98,9 @@ defmodule SynergeticsTui.InputHandler do
         %{state | mode: :detail, edit_field: nil, edit_buffer: ""}
 
       :back ->
+        %{state | mode: :detail, edit_field: nil, edit_buffer: ""}
+
+      :escape ->
         %{state | mode: :detail, edit_field: nil, edit_buffer: ""}
 
       # Handle character input for editing
@@ -149,9 +158,14 @@ defmodule SynergeticsTui.InputHandler do
         end
         %{state | search_query: new_query, cards: cards, selected_index: 0}
 
+      # Return to card list (Esc key or 'b' key)
+      :escape ->
+        cards = Database.list_cards(state.conn, limit: @page_size, offset: state.offset)
+        %{state | mode: :list, search_query: "", cards: cards, selected_index: 0, message: "Returned to card list"}
+
       :back ->
         cards = Database.list_cards(state.conn, limit: @page_size, offset: state.offset)
-        %{state | mode: :list, search_query: "", cards: cards, selected_index: 0}
+        %{state | mode: :list, search_query: "", cards: cards, selected_index: 0, message: "Returned to card list"}
 
       :enter ->
         if state.selected_index < length(state.cards) do
@@ -169,6 +183,52 @@ defmodule SynergeticsTui.InputHandler do
       :up ->
         new_index = max(state.selected_index - 1, 0)
         %{state | selected_index: new_index}
+
+      _ ->
+        state
+    end
+  end
+
+  def handle_input(%State{mode: :jump} = state, input) do
+    case input do
+      # Handle character input for jump
+      {:char, char} ->
+        # Handle backspace/delete
+        new_buffer = if char == "\d" or char == "\x7F" do
+          String.slice(state.jump_buffer, 0..-2//1)
+        else
+          state.jump_buffer <> char
+        end
+        %{state | jump_buffer: new_buffer}
+
+      # Legacy support for {:text, text}
+      {:text, text} ->
+        %{state | jump_buffer: state.jump_buffer <> text}
+
+      # Jump to card on Enter
+      :enter ->
+        if state.jump_buffer == "" do
+          # Empty input, return to list
+          %{state | mode: :list, jump_buffer: "", message: "Returned to card list"}
+        else
+          # Try to find the card
+          case Database.get_card_by_number(state.conn, state.jump_buffer) do
+            nil ->
+              # Card not found
+              %{state | mode: :list, jump_buffer: "", message: "Card not found: #{state.jump_buffer}"}
+
+            card ->
+              # Card found, show it
+              %{state | mode: :detail, current_card: card, jump_buffer: "", message: "Jumped to card #{card.card_number}"}
+          end
+        end
+
+      # Return to card list (Esc key or 'b' key)
+      :escape ->
+        %{state | mode: :list, jump_buffer: "", message: "Returned to card list"}
+
+      :back ->
+        %{state | mode: :list, jump_buffer: "", message: "Returned to card list"}
 
       _ ->
         state

@@ -96,13 +96,76 @@ defmodule SynergeticsTui.Database do
   end
 
   @doc """
+  Gets a single card by card number.
+  Accepts various formats: 1924, C1924, C01924, 01924
+  Returns the card map or nil if not found.
+  """
+  def get_card_by_number(conn, card_number) do
+    # Normalize the card number to just the numeric part
+    numeric_part =
+      card_number
+      |> to_string()
+      |> String.replace(~r/^C0*/i, "")
+
+    # Convert to integer
+    case Integer.parse(numeric_part) do
+      {num, _} ->
+        sql = """
+        SELECT id, card_number, title, letter_group, volume, card_type,
+               reference_level, reference_level_label, content_text, definition_text,
+               image_path, sort_order, reviewed_at, needs_review, review_notes
+        FROM cards
+        WHERE card_number = ?1
+        """
+
+        case Exqlite.Sqlite3.prepare(conn, sql) do
+          {:ok, stmt} ->
+            rows = execute_query(conn, stmt, [num])
+            Exqlite.Sqlite3.release(conn, stmt)
+
+            case rows do
+              [[id, card_num, title, lg, vol, type, ref_lvl, ref_lbl, content, def_text, img, sort, reviewed, needs_review, review_notes]] ->
+                %{
+                  id: id,
+                  card_number: card_num,
+                  title: title,
+                  letter_group: lg,
+                  volume: vol,
+                  card_type: type,
+                  reference_level: ref_lvl,
+                  reference_level_label: ref_lbl,
+                  content_text: content,
+                  definition_text: def_text,
+                  image_path: img,
+                  sort_order: sort,
+                  reviewed_at: reviewed,
+                  needs_review: needs_review,
+                  review_notes: review_notes,
+                  see_links: get_see_links(conn, id),
+                  citations: get_citations(conn, id)
+                }
+
+              _ ->
+                nil
+            end
+
+          {:error, _reason} ->
+            nil
+        end
+
+      :error ->
+        nil
+    end
+  end
+
+  @doc """
   Gets a single card by ID with all details.
   """
   def get_card(conn, card_id) do
     sql = """
     SELECT id, card_number, title, letter_group, volume, card_type,
            reference_level, reference_level_label, content_text, definition_text,
-           image_path, sort_order, reviewed_at
+           image_path, sort_order, reviewed_at, needs_review, review_notes
     FROM cards
     WHERE id = ?1
     """
@@ -113,7 +176,7 @@ defmodule SynergeticsTui.Database do
         Exqlite.Sqlite3.release(conn, stmt)
 
         case rows do
-          [[id, card_num, title, lg, vol, type, ref_lvl, ref_lbl, content, def_text, img, sort, reviewed]] ->
+          [[id, card_num, title, lg, vol, type, ref_lvl, ref_lbl, content, def_text, img, sort, reviewed, needs_review, review_notes]] ->
             %{
               id: id,
               card_number: card_num,
@@ -128,6 +191,8 @@ defmodule SynergeticsTui.Database do
               image_path: img,
               sort_order: sort,
               reviewed_at: reviewed,
+              needs_review: needs_review,
+              review_notes: review_notes,
               see_links: get_see_links(conn, card_id),
               citations: get_citations(conn, card_id)
             }
@@ -239,7 +304,7 @@ defmodule SynergeticsTui.Database do
     search_term = "%#{query}%"
 
     sql = """
-    SELECT id, title, letter_group, card_type, reference_level, sort_order
+    SELECT id, title, letter_group, card_type, reference_level, reference_level_label, sort_order
     FROM cards
     WHERE title LIKE ?1 OR content_text LIKE ?1
     ORDER BY sort_order
@@ -251,13 +316,14 @@ defmodule SynergeticsTui.Database do
         rows = execute_query(conn, stmt, [search_term, limit])
         Exqlite.Sqlite3.release(conn, stmt)
 
-        Enum.map(rows, fn [id, title, letter_group, card_type, ref_level, sort_order] ->
+        Enum.map(rows, fn [id, title, letter_group, card_type, ref_level, ref_label, sort_order] ->
           %{
             id: id,
             title: title,
             letter_group: letter_group,
             card_type: card_type,
             reference_level: ref_level,
+            reference_level_label: ref_label,
             sort_order: sort_order
           }
         end)

@@ -1,13 +1,14 @@
 #!/usr/bin/env tsx
 import React, { useState, useEffect } from 'react';
 import { render, Box, Text } from 'ink';
-import { countCards, listCards, getCard, closeDatabase } from './database.js';
+import { countCards, listCards, getCard, getCardByNumber, closeDatabase } from './database.js';
 import CardList from './components/CardList.tsx';
 import CardDetail from './components/CardDetail.tsx';
 import SearchInput from './components/SearchInput.tsx';
+import JumpToCardInput from './components/JumpToCardInput.tsx';
 
 function App() {
-  const [mode, setMode] = useState('list'); // 'list', 'detail', 'search'
+  const [mode, setMode] = useState('list'); // 'list', 'detail', 'search', 'jump'
   const [cards, setCards] = useState([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [currentCard, setCurrentCard] = useState(null);
@@ -61,6 +62,7 @@ function App() {
 
   const handleSearchCancel = () => {
     setMode('list');
+    setMessage('Returned to card list');
   };
 
   const handleNextPage = () => {
@@ -89,6 +91,43 @@ function App() {
     setMessage(`Refreshed - ${total} cards loaded`);
   };
 
+  const handleClearSearch = () => {
+    setSearchQuery('');
+    loadCards(null, 0);
+    setMessage('Returned to full card list');
+  };
+
+  const handleJump = () => {
+    setMode('jump');
+  };
+
+  const handleJumpSubmit = (cardNumber) => {
+    const card = getCardByNumber(cardNumber);
+    if (card) {
+      const fullCard = getCard(card.id);
+      setCurrentCard(fullCard);
+      setMode('detail');
+      setMessage(`Jumped to card ${card.card_number}`);
+    } else {
+      setMode('list');
+      setMessage(`Card not found: ${cardNumber}`);
+    }
+  };
+
+  const handleJumpCancel = () => {
+    setMode('list');
+    setMessage('Returned to card list');
+  };
+
+  const handleNavigateToCard = (cardId) => {
+    const fullCard = getCard(cardId);
+    if (fullCard) {
+      setCurrentCard(fullCard);
+      setMode('detail');
+      setMessage(`Navigated to ${fullCard.card_number} - ${fullCard.title}`);
+    }
+  };
+
   return (
     <Box flexDirection="column" padding={1}>
       <Box borderStyle="round" borderColor="cyan" paddingX={1} marginBottom={1}>
@@ -107,6 +146,9 @@ function App() {
           selectedIndex={selectedIndex}
           onSelect={handleSelectCard}
           onSearch={handleSearch}
+          onJump={handleJump}
+          onClearSearch={handleClearSearch}
+          searchQuery={searchQuery}
           onNextPage={handleNextPage}
           onPrevPage={handlePrevPage}
           onQuit={handleQuit}
@@ -129,6 +171,7 @@ function App() {
           card={currentCard}
           onBack={handleBack}
           onQuit={handleQuit}
+          onNavigateToCard={handleNavigateToCard}
         />
       )}
 
@@ -136,6 +179,13 @@ function App() {
         <SearchInput
           onSubmit={handleSearchSubmit}
           onCancel={handleSearchCancel}
+        />
+      )}
+
+      {mode === 'jump' && (
+        <JumpToCardInput
+          onSubmit={handleJumpSubmit}
+          onCancel={handleJumpCancel}
         />
       )}
     </Box>

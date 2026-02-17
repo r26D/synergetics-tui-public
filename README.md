@@ -1,5 +1,7 @@
 # Synergetics Dictionary TUI
 
+**This repository is the canonical home for the Synergetics Dictionary TUI.** It contains two implementations for browsing the dictionary database: Elixir (full-featured, editable) and Ink/React (read-only, instant UI).
+
 Two Terminal User Interface (TUI) applications for browsing the Synergetics Dictionary database - one built with Elixir, one with TypeScript/React/Ink.
 
 ## 🎯 Overview
@@ -203,9 +205,11 @@ Make sure you've run `npm install` in the `synergetics-tui-ink` directory.
 
 To use a full Synergetics Dictionary database instead of the sample:
 
-1. Place your `synergetics_dictionary.db` file in the `data/` directory
+1. Place your `synergetics_dictionary.db` file in the `data/` directory (or symlink: `ln -s /path/to/elib-synergetics-dictionary/data/synergetics_dictionary.db data/`)
 2. Ensure it follows the schema in `data/schema.sql`
 3. Run either TUI normally
+
+**If you work on the main dictionary repo (elib-synergetics-dictionary):** clone this TUI repo alongside it and point at the main repo's database, e.g. `ln -s ../elib-synergetics-dictionary/data/synergetics_dictionary.db data/`, then `./run_tui.sh` or `./run_tui_ink.sh`.
 
 The database should contain cards with the following structure:
 - Card IDs: C00001 through C21188 (or any range)

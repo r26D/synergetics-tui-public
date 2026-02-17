@@ -44,9 +44,33 @@ export function listCards({ limit = 20, offset = 0, search = null }) {
   return db.prepare(query).all(...params);
 }
 
+export function getSeeLinks(cardId) {
+  const db = openDatabase();
+  return db.prepare(`
+    SELECT id, target_card_id, display_text, line_content, date_annotation, reference_levels
+    FROM see_links
+    WHERE source_card_id = ?
+    ORDER BY sort_order
+  `).all(cardId);
+}
+
 export function getCard(id) {
   const db = openDatabase();
-  return db.prepare('SELECT * FROM cards WHERE id = ?').get(id);
+  const card = db.prepare('SELECT * FROM cards WHERE id = ?').get(id);
+  if (card) {
+    card.see_links = getSeeLinks(id);
+  }
+  return card;
+}
+
+export function getCardByNumber(cardNumber) {
+  const db = openDatabase();
+  // Card numbers can be provided as just the number (e.g., "1924") or with prefix (e.g., "C01924")
+  // We'll normalize to just the number for comparison
+  const numericPart = String(cardNumber).replace(/^C0*/i, '');
+  const paddedNumber = parseInt(numericPart, 10);
+
+  return db.prepare('SELECT * FROM cards WHERE card_number = ?').get(paddedNumber);
 }
 
 export function updateCard(id, fields) {

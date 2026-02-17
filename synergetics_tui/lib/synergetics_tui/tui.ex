@@ -9,13 +9,14 @@ defmodule SynergeticsTui.TUI do
     @moduledoc false
     defstruct [
       :conn,
-      :mode,           # :list, :detail, :edit, :search
+      :mode,           # :list, :detail, :edit, :search, :jump
       :cards,          # List of cards for current view
       :current_card,   # Currently selected card (full details)
       :selected_index, # Index in the cards list
       :offset,         # Pagination offset
       :total_count,    # Total number of cards
       :search_query,   # Current search query
+      :jump_buffer,    # Buffer for jump input
       :edit_field,     # Field being edited
       :edit_buffer,    # Buffer for editing
       :message         # Status message to display
@@ -58,6 +59,7 @@ defmodule SynergeticsTui.TUI do
           offset: 0,
           total_count: total,
           search_query: "",
+          jump_buffer: "",
           edit_field: nil,
           edit_buffer: "",
           message: "Synergetics Dictionary TUI - #{total} cards loaded"
@@ -121,6 +123,12 @@ defmodule SynergeticsTui.TUI do
     render_footer_search()
   end
 
+  defp render(%State{mode: :jump} = state) do
+    render_header(state)
+    render_jump(state)
+    render_footer_jump()
+  end
+
   defp render_header(state) do
     IO.puts(IO.ANSI.cyan() <> String.duplicate("=", 80) <> IO.ANSI.reset())
     IO.puts(IO.ANSI.bright() <> IO.ANSI.cyan() <>
@@ -133,6 +141,27 @@ defmodule SynergeticsTui.TUI do
 
     IO.puts("")
   end
+
+  # Returns suffix string for reference level/label for use in card list and search (e.g. " (2B)" or " (1)").
+  # Normalizes so we display labels like "A", "2B", "C1" even when reference_level is NULL.
+  defp format_ref_level(card) do
+    label = normalize_ref_value(Map.get(card, :reference_level_label))
+    level = Map.get(card, :reference_level)
+    cond do
+      label != nil and label != "" -> " (#{label})"
+      level != nil and level != "" -> " (#{level})"
+      true -> ""
+    end
+  end
+
+  defp normalize_ref_value(nil), do: nil
+  defp normalize_ref_value(""), do: nil
+  defp normalize_ref_value(s) when is_binary(s) do
+    t = String.trim(s)
+    if t == "", do: nil, else: t
+  end
+  defp normalize_ref_value(s) when is_list(s), do: normalize_ref_value(to_string(s))
+  defp normalize_ref_value(s), do: normalize_ref_value(to_string(s))
 
   defp render_card_list(state) do
     IO.puts(IO.ANSI.bright() <>
@@ -149,12 +178,7 @@ defmodule SynergeticsTui.TUI do
         "  "
       end
 
-      ref_level = cond do
-        card.reference_level_label -> " (#{card.reference_level_label})"
-        card.reference_level -> " (#{card.reference_level})"
-        true -> ""
-      end
-
+      ref_level = format_ref_level(card)
       review_indicator = if card.needs_review, do: " ⚠️ ", else: ""
 
       line = "#{prefix}#{card.id} - #{truncate(card.title, 60)}#{ref_level}#{review_indicator}"
@@ -170,7 +194,8 @@ defmodule SynergeticsTui.TUI do
   defp render_footer_list do
     IO.puts("")
     IO.puts(IO.ANSI.cyan() <> String.duplicate("-", 80) <> IO.ANSI.reset())
-    IO.puts("  ↑/↓ or j/k: Navigate  Enter: View  /: Search  n/p or ←/→: Next/Prev Page  q: Quit")
+    IO.puts("  ↑/↓ or j/k: Navigate  Enter: View  g: Jump to card  /: Search")
+    IO.puts("  n/p or ←/→: Next/Prev Page  q: Quit")
     IO.puts(IO.ANSI.yellow() <> "  (All commands work instantly!)" <> IO.ANSI.reset())
   end
 
@@ -185,8 +210,11 @@ defmodule SynergeticsTui.TUI do
       IO.puts(IO.ANSI.cyan() <> "Title: " <> IO.ANSI.reset() <> card.title)
       IO.puts("Type: #{card.card_type} | Group: #{card.letter_group} | Volume: #{card.volume || "N/A"}")
 
-      if card.reference_level do
-        label = card.reference_level_label || "#{card.reference_level}"
+      ref_label = card.reference_level_label
+      ref_level = card.reference_level
+      show_ref = (is_binary(ref_label) and ref_label != "") or ref_level != nil
+      if show_ref do
+        label = if is_binary(ref_label) and ref_label != "", do: ref_label, else: "#{ref_level}"
         IO.puts("Reference Level: #{label}")
       end
 
@@ -236,7 +264,7 @@ defmodule SynergeticsTui.TUI do
   defp render_footer_detail do
     IO.puts("")
     IO.puts(IO.ANSI.cyan() <> String.duplicate("-", 80) <> IO.ANSI.reset())
-    IO.puts("  e: Edit  b: Back to list  q: Quit")
+    IO.puts("  e: Edit  Esc or b: Back to list  q: Quit")
     IO.puts(IO.ANSI.yellow() <> "  (All commands work instantly!)" <> IO.ANSI.reset())
   end
 
@@ -263,7 +291,7 @@ defmodule SynergeticsTui.TUI do
   defp render_footer_edit do
     IO.puts("")
     IO.puts(IO.ANSI.cyan() <> String.duplicate("-", 80) <> IO.ANSI.reset())
-    IO.puts("  1-3: Select field  s: Save  c: Cancel  b: Back")
+    IO.puts("  1-3: Select field  s: Save  Esc or c: Cancel  b: Back")
     IO.puts(IO.ANSI.yellow() <> "  (Type command and press Enter)" <> IO.ANSI.reset())
   end
 
@@ -282,7 +310,8 @@ defmodule SynergeticsTui.TUI do
       |> Enum.with_index()
       |> Enum.each(fn {card, index} ->
         prefix = if index == state.selected_index, do: "► ", else: "  "
-        IO.puts("#{prefix}#{card.id} - #{truncate(card.title, 60)}")
+        ref_level = format_ref_level(card)
+        IO.puts("#{prefix}#{card.id} - #{truncate(card.title, 60)}#{ref_level}")
       end)
     end
   end
@@ -290,8 +319,23 @@ defmodule SynergeticsTui.TUI do
   defp render_footer_search do
     IO.puts("")
     IO.puts(IO.ANSI.cyan() <> String.duplicate("-", 80) <> IO.ANSI.reset())
-    IO.puts("  Type to search  ↑/↓: Navigate  Enter: View  b: Back")
+    IO.puts("  Type to search  ↑/↓: Navigate  Enter: View  Esc or b: Back to card list  q: Quit")
     IO.puts(IO.ANSI.yellow() <> "  (Type instantly, use arrows to navigate, Backspace to delete)" <> IO.ANSI.reset())
+  end
+
+  defp render_jump(state) do
+    IO.puts(IO.ANSI.bright() <> "Jump to Card" <> IO.ANSI.reset())
+    IO.puts("")
+    IO.puts("Card Number: #{state.jump_buffer}_")
+    IO.puts("")
+    IO.puts(IO.ANSI.cyan() <> "Enter card number (e.g., 1924, C1924, C01924)" <> IO.ANSI.reset())
+  end
+
+  defp render_footer_jump do
+    IO.puts("")
+    IO.puts(IO.ANSI.cyan() <> String.duplicate("-", 80) <> IO.ANSI.reset())
+    IO.puts("  Type card number  Enter: Jump to card  Esc or b: Back to card list")
+    IO.puts(IO.ANSI.yellow() <> "  (Type instantly, Backspace to delete)" <> IO.ANSI.reset())
   end
 
   defp get_input(input_device) do
@@ -324,7 +368,8 @@ defmodule SynergeticsTui.TUI do
 
       # Escape sequence (arrow keys, etc.)
       "\e" ->
-        case get_char(input_device) do
+        # Peek at next character to see if it's an escape sequence or standalone Esc
+        case :io.get_chars(input_device, "", 1) do
           "[" ->
             case get_char(input_device) do
               "A" -> :up
@@ -333,7 +378,10 @@ defmodule SynergeticsTui.TUI do
               "D" -> :prev_page  # Left arrow = prev page
               _other -> read_char_input(input_device)  # Unknown sequence, try again
             end
-          _other -> read_char_input(input_device)  # Unknown sequence, try again
+          # If no character follows immediately, treat as standalone Esc key
+          :eof -> :escape
+          {:error, _} -> :escape
+          _other -> :escape  # Standalone Esc key
         end
 
       # Regular commands
@@ -343,6 +391,7 @@ defmodule SynergeticsTui.TUI do
       "n" -> :next_page
       "p" -> :prev_page
       "/" -> :search
+      "g" -> :jump
       "b" -> :back
       "e" -> :edit
       "s" -> :save
