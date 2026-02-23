@@ -141,7 +141,7 @@ defmodule SynergeticsTui.Database do
                   reviewed_at: reviewed,
                   needs_review: needs_review,
                   review_notes: review_notes,
-                  see_links: get_see_links(conn, id),
+                  cross_references: get_cross_references(conn, id),
                   citations: get_citations(conn, id)
                 }
 
@@ -193,7 +193,7 @@ defmodule SynergeticsTui.Database do
               reviewed_at: reviewed,
               needs_review: needs_review,
               review_notes: review_notes,
-              see_links: get_see_links(conn, card_id),
+              cross_references: get_cross_references(conn, card_id),
               citations: get_citations(conn, card_id)
             }
 
@@ -207,12 +207,12 @@ defmodule SynergeticsTui.Database do
   end
 
   @doc """
-  Gets see_links for a card.
+  Gets cross_references for a card.
   """
-  def get_see_links(conn, card_id) do
+  def get_cross_references(conn, card_id) do
     sql = """
     SELECT id, target_card_id, display_text, line_content, date_annotation, reference_levels
-    FROM see_links
+    FROM cross_references
     WHERE source_card_id = ?1
     ORDER BY sort_order
     """

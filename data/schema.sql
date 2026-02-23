@@ -5,6 +5,17 @@ PRAGMA journal_mode = WAL;
 PRAGMA foreign_keys = ON;
 
 -- ============================================================================
+-- List of Main File Indicators (principal indicators per volume; see front-matter)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS main_file_indicators (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    name            TEXT NOT NULL UNIQUE,   -- e.g. "Sequences: Metaphors", "Diagrams in This File"
+    volume          INTEGER NOT NULL,       -- 1-4
+    page            TEXT,                   -- Volume page reference from printed list (e.g. "607")
+    sort_order      INTEGER NOT NULL DEFAULT 0
+);
+
+-- ============================================================================
 -- Core card table: one row per card file (C00001.tex .. C21188.tex)
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS cards (
@@ -13,9 +24,17 @@ CREATE TABLE IF NOT EXISTS cards (
     title           TEXT NOT NULL,          -- From \section{...} e.g. "Acceleration: Angular and Linear Acceleration"
     letter_group    TEXT NOT NULL,          -- 'a'..'w', 'xyz'
     volume          INTEGER,               -- 1-4 based on letter range
-    card_type       TEXT NOT NULL           -- 'definition', 'text_citation', 'cross_reference', 'term'
-                    CHECK(card_type IN ('definition','text_citation','cross_reference','term')),
-    reference_level INTEGER,               -- 1, 2, or 3 from trailing (1)/(2)/(3); NULL if absent
+    main_file_indicator_id INTEGER REFERENCES main_file_indicators(id),  -- When this card is the header for a main indicator
+    card_type       TEXT NOT NULL           -- see docs-site/docs/card-types-inventory.md
+                    CHECK(card_type IN (
+                      'definition','text_citation','cross_reference','term',
+                      'rbf_definitions','robert_marks_definition','ed_schlossberg_definition',
+                      'text_citations','file_indicators','rbf_personal_references','rbf_quotation','named_quotation',
+                      'bor_memorandum','synergetics_style_rule','tables','biblical_references','paired_citations',
+                      'rbf_comments','eja_comments',
+                      'letter_group_divider','index_entry'
+                    )),
+    reference_level INTEGER,               -- 0 = source; 1, 2, 3 from trailing (1)/(2)/(3); NULL if absent
     reference_level_label TEXT,            -- Display form e.g. '2B', '(A)' when not plain (1)/(2)/(3)
     content_text    TEXT,                   -- Full raw text inside verbatim/alltt block
     definition_text TEXT,                   -- Quoted definition portion only (definition cards)
@@ -40,12 +59,12 @@ CREATE TABLE IF NOT EXISTS card_aliases (
 );
 
 -- ============================================================================
--- Cross-references: "See" links between cards
+-- Cross-references: "See [Term]" lines between cards (How-to-Use: primary/secondary/third-level)
 -- Cards often list multiple "See Term" lines; we store one row per term
 -- associated with the source card. target_card_id is set when the relationship
 -- is resolved (after import and data cleanup); until then it is NULL.
 -- ============================================================================
-CREATE TABLE IF NOT EXISTS see_links (
+CREATE TABLE IF NOT EXISTS cross_references (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     source_card_id  TEXT NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
     target_card_id  TEXT REFERENCES cards(id) ON DELETE SET NULL,  -- NULL until resolved
@@ -53,6 +72,7 @@ CREATE TABLE IF NOT EXISTS see_links (
     line_content    TEXT,                   -- Full line as on card e.g. "See Architecture (1)"
     date_annotation TEXT,                   -- Optional dates e.g. "26 Sep'68; 2 Jul'62"
     reference_levels TEXT,                  -- Optional markers e.g. "(1)", "(2)", "(1) (2)"
+    abstracted_elsewhere INTEGER,           -- 1 if asterisk present (How-to-Use: ref already abstracted among subject captions); NULL/0 otherwise
     sort_order      INTEGER NOT NULL,       -- Order of appearance within source card
     UNIQUE(source_card_id, target_card_id)  -- One resolved link per (source, target); multiple NULL targets allowed
 );
@@ -69,6 +89,7 @@ CREATE TABLE IF NOT EXISTS citations (
     source_title    TEXT,                   -- Extracted document name if parseable
     date            TEXT,                   -- Extracted date if parseable
     page            TEXT,                   -- Page reference if any
+    location        TEXT,                   -- Geographical location for unpublished citations (How-to-Use)
     sort_order      INTEGER NOT NULL DEFAULT 0
 );
 
@@ -121,10 +142,12 @@ CREATE INDEX IF NOT EXISTS idx_cards_card_type     ON cards(card_type);
 CREATE INDEX IF NOT EXISTS idx_cards_reviewed_at   ON cards(reviewed_at) WHERE reviewed_at IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_cards_sort_order    ON cards(sort_order);
 CREATE INDEX IF NOT EXISTS idx_cards_card_number   ON cards(card_number);
-CREATE INDEX IF NOT EXISTS idx_see_links_source    ON see_links(source_card_id);
-CREATE INDEX IF NOT EXISTS idx_see_links_target    ON see_links(target_card_id);
+CREATE INDEX IF NOT EXISTS idx_cross_references_source ON cross_references(source_card_id);
+CREATE INDEX IF NOT EXISTS idx_cross_references_target ON cross_references(target_card_id);
 CREATE INDEX IF NOT EXISTS idx_citations_card      ON citations(card_id);
 CREATE INDEX IF NOT EXISTS idx_section_refs_card   ON section_refs(card_id);
 CREATE INDEX IF NOT EXISTS idx_section_refs_section ON section_refs(section_number);
 CREATE INDEX IF NOT EXISTS idx_card_aliases_card   ON card_aliases(card_id);
 CREATE INDEX IF NOT EXISTS idx_card_aliases_alias  ON card_aliases(alias);
+CREATE INDEX IF NOT EXISTS idx_cards_main_file_indicator ON cards(main_file_indicator_id);
+CREATE INDEX IF NOT EXISTS idx_main_file_indicators_volume ON main_file_indicators(volume);

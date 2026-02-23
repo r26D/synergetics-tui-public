@@ -2,8 +2,8 @@ import React from 'react';
 import { Box, Text, useInput } from 'ink';
 
 export default function CardDetail({ card, onBack, onQuit, onNavigateToCard }) {
-  const seeLinks = Array.isArray(card.see_links) ? card.see_links : [];
-  const navigableLinks = seeLinks.filter(link => link.target_card_id);
+  const crossRefs = Array.isArray(card.cross_references) ? card.cross_references : [];
+  const navigableLinks = crossRefs.filter(link => link.target_card_id);
 
   useInput((input, key) => {
     if (input === 'q') {
@@ -61,7 +61,7 @@ export default function CardDetail({ card, onBack, onQuit, onNavigateToCard }) {
           <Text>{card.content_text || '(no content)'}</Text>
         </Box>
 
-        {seeLinks.length > 0 && (
+        {crossRefs.length > 0 && (
           <Box marginTop={1} flexDirection="column">
             <Box marginBottom={1}>
               <Text bold color="yellow">See Also: </Text>
@@ -70,7 +70,7 @@ export default function CardDetail({ card, onBack, onQuit, onNavigateToCard }) {
               )}
             </Box>
             <Box flexDirection="column">
-              {seeLinks.map((link, idx) => {
+              {crossRefs.map((link, idx) => {
                 const num = navigableLinks.indexOf(link) + 1;
                 const isNavigable = num > 0 && num <= 9;
                 const raw = link.display_text || link.line_content || '';

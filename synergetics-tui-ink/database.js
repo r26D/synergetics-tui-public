@@ -44,11 +44,11 @@ export function listCards({ limit = 20, offset = 0, search = null }) {
   return db.prepare(query).all(...params);
 }
 
-export function getSeeLinks(cardId) {
+export function getCrossReferences(cardId) {
   const db = openDatabase();
   return db.prepare(`
     SELECT id, target_card_id, display_text, line_content, date_annotation, reference_levels
-    FROM see_links
+    FROM cross_references
     WHERE source_card_id = ?
     ORDER BY sort_order
   `).all(cardId);
@@ -58,7 +58,7 @@ export function getCard(id) {
   const db = openDatabase();
   const card = db.prepare('SELECT * FROM cards WHERE id = ?').get(id);
   if (card) {
-    card.see_links = getSeeLinks(id);
+    card.cross_references = getCrossReferences(id);
   }
   return card;
 }

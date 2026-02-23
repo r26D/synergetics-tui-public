@@ -1,10 +1,10 @@
-# Synergetics Dictionary TUI (Elixir)
+# Synergetics Dictionary TUI
 
-A Terminal User Interface (TUI) for browsing and editing cards from the Synergetics Dictionary database, built with Elixir.
+A Terminal User Interface (TUI) for browsing and editing cards from the Synergetics Dictionary database.
 
 ## Features
 
-- **Browse Cards**: Navigate through all dictionary cards with pagination
+- **Browse Cards**: Navigate through all 21,000+ dictionary cards with pagination
 - **View Details**: See full card content including:
   - Title, type, letter group, volume
   - Content text and definition text
@@ -18,6 +18,7 @@ A Terminal User Interface (TUI) for browsing and editing cards from the Synerget
 
 - Elixir 1.18 or later
 - The Synergetics Dictionary database at `../data/synergetics_dictionary.db`
+  - Run `elixir scripts/import_cards_to_sqlite.exs` from the project root to create the database
 
 ## Installation
 
@@ -31,44 +32,69 @@ A Terminal User Interface (TUI) for browsing and editing cards from the Synerget
    mix compile
    ```
 
+3. Build the executable:
+   ```bash
+   mix escript.build
+   ```
+
 ## Usage
 
-### From the project root:
-```bash
-./run_tui.sh
-```
+**Recommended:** Run the TUI using the Mix task:
 
-### From this directory:
 ```bash
 mix tui
 ```
 
-## Keyboard Shortcuts
+Or from the project root:
 
-### List Mode (browsing cards)
-- `j` or `↓` - Move down
-- `k` or `↑` - Move up
-- `n` or `→` - Next page
-- `p` or `←` - Previous page
-- `Enter` - View selected card details
-- `/` - Enter search mode
-- `q` - Quit
+```bash
+./run_tui.sh
+```
 
-### Detail Mode (viewing a card)
-- `e` - Enter edit mode
-- `Esc` or `b` - Back to list
-- `q` - Quit
+**Note:** The escript version (`./synergetics_tui`) has issues with NIF loading. Use the Mix task instead.
 
-### Edit Mode
-- `1` - Edit title
-- `2` - Edit content
-- `3` - Edit definition
-- `s` - Save changes
-- `Esc` or `c` - Cancel (back to detail view)
+## ⚡ Important: ALL Input is Instant!
 
-### Search Mode
-- Type your query and press `Enter`
-- `Esc` - Cancel search
+**The TUI uses character-by-character input - everything works instantly!**
+
+- Just press any key - no need to press Enter!
+- Arrow keys work instantly (↑/↓/←/→)
+- Letter commands work instantly (j/k/n/p/q/e/b)
+- Type to search - characters appear instantly
+- Backspace works in search and edit modes
+
+**No more waiting, no more pressing Enter!** The TUI responds immediately to every keypress.
+
+## Keyboard Shortcuts (All Instant! ⚡)
+
+### List View (Browse Cards)
+- `↑` or `k`: Move up
+- `↓` or `j`: Move down
+- `→` or `Enter`: View selected card
+- `n`: Next page
+- `p`: Previous page
+- `/`: Search cards
+- `q`: Quit
+
+**All commands work instantly - no need to press Enter!**
+
+### Detail View (Card Details)
+- `←` or `b`: Back to list
+- `e`: Edit card
+- `q`: Quit
+
+### Edit View
+- `1-3`: Select field to edit (1=Title, 2=Content, 3=Definition)
+- Type to add text to the selected field
+- `s`: Save changes
+- `c`: Cancel editing
+- `b`: Back to detail view
+
+### Search View
+- Type to search
+- `↑`/`↓` or `k`/`j`: Navigate results
+- `Enter`: View selected card
+- `b`: Back to list
 
 ## Architecture
 
@@ -98,34 +124,10 @@ mix format
 ## Notes
 
 - The TUI uses a simple line-based input system (press Enter after each command)
+- For better terminal control, consider using a library like Ratatouille in the future
 - The database path is relative to the TUI directory: `../data/synergetics_dictionary.db`
-- Use `mix tui` instead of the escript due to NIF loading requirements
 
-## Troubleshooting
+## License
 
-### Database Not Found
-```
-Error: Database not found at ../data/synergetics_dictionary.db
-```
-
-**Solution:** Create the sample database from the project root:
-```bash
-cd ..
-elixir create_sample_database.exs
-```
-
-### Compilation Errors
-If you encounter compilation errors, try:
-```bash
-mix deps.clean --all
-mix deps.get
-mix compile
-```
-
-### Terminal Issues
-If the terminal doesn't respond properly, make sure you're using the launcher script which sets up the terminal correctly:
-```bash
-cd ..
-./run_tui.sh
-```
+Same as the Synergetics Dictionary project.
 

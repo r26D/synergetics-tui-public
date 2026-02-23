@@ -142,15 +142,31 @@ defmodule SynergeticsTui.TUI do
     IO.puts("")
   end
 
+  # Title with reference level appended when present (e.g. "Term (2B)" or "Term (1)").
+  defp display_title(card) do
+    (card.title || card.id) <> format_ref_level(card)
+  end
+
   # Returns suffix string for reference level/label for use in card list and search (e.g. " (2B)" or " (1)").
   # Normalizes so we display labels like "A", "2B", "C1" even when reference_level is NULL.
+  # If reference_level_label is already parenthesized (e.g. "(4)"), strip one level so we don't show "((4))".
   defp format_ref_level(card) do
     label = normalize_ref_value(Map.get(card, :reference_level_label))
     level = Map.get(card, :reference_level)
     cond do
-      label != nil and label != "" -> " (#{label})"
+      label != nil and label != "" -> " (#{strip_parens(label)})"
       level != nil and level != "" -> " (#{level})"
       true -> ""
+    end
+  end
+
+  defp strip_parens(s) when is_binary(s) do
+    t = String.trim(s)
+    if String.starts_with?(t, "(") and String.ends_with?(t, ")") do
+      len = String.length(t) - 2
+      t |> String.slice(1, len) |> String.trim()
+    else
+      t
     end
   end
 
@@ -207,7 +223,7 @@ defmodule SynergeticsTui.TUI do
 
     if card do
       IO.puts(IO.ANSI.bright() <> "Card: #{card.id}" <> IO.ANSI.reset())
-      IO.puts(IO.ANSI.cyan() <> "Title: " <> IO.ANSI.reset() <> card.title)
+      IO.puts(IO.ANSI.cyan() <> "Title: " <> IO.ANSI.reset() <> display_title(card))
       IO.puts("Type: #{card.card_type} | Group: #{card.letter_group} | Volume: #{card.volume || "N/A"}")
 
       ref_label = card.reference_level_label
@@ -220,7 +236,15 @@ defmodule SynergeticsTui.TUI do
 
       if card.needs_review do
         IO.puts("")
-        IO.puts(IO.ANSI.yellow() <> "⚠️  NEEDS REVIEW: " <> IO.ANSI.reset() <> (card.review_notes || "This card needs manual review"))
+        IO.puts(IO.ANSI.yellow() <> "Review Notes:" <> IO.ANSI.reset())
+        notes = split_review_notes(card.review_notes)
+        if notes == [] do
+          IO.puts("  1. This card needs manual review.")
+        else
+          notes
+          |> Enum.with_index(1)
+          |> Enum.each(fn {note, n} -> IO.puts("  #{n}. #{note}") end)
+        end
       end
 
       IO.puts("")
@@ -240,10 +264,10 @@ defmodule SynergeticsTui.TUI do
         IO.puts(card.definition_text)
       end
 
-      if length(card.see_links) > 0 do
+      if length(card.cross_references) > 0 do
         IO.puts("")
-        IO.puts(IO.ANSI.yellow() <> "See Links (#{length(card.see_links)}):" <> IO.ANSI.reset())
-        Enum.take(card.see_links, 5) |> Enum.each(fn link ->
+        IO.puts(IO.ANSI.yellow() <> "Cross References (#{length(card.cross_references)}):" <> IO.ANSI.reset())
+        Enum.take(card.cross_references, 5) |> Enum.each(fn link ->
           target = link.target_card_id || "unresolved"
           IO.puts("  → #{link.display_text} (#{target})")
         end)
@@ -274,7 +298,7 @@ defmodule SynergeticsTui.TUI do
     if card do
       IO.puts(IO.ANSI.bright() <> "Editing Card: #{card.id}" <> IO.ANSI.reset())
       IO.puts("")
-      IO.puts("1. Title: #{truncate(card.title, 60)}")
+      IO.puts("1. Title: #{truncate(display_title(card), 60)}")
       IO.puts("2. Content Text: #{truncate(card.content_text || "", 60)}")
       IO.puts("3. Definition Text: #{truncate(card.definition_text || "", 60)}")
       IO.puts("")
@@ -417,4 +441,15 @@ defmodule SynergeticsTui.TUI do
       text
     end
   end
+
+  # Split review_notes into list items (semicolon- or newline-separated in DB).
+  defp split_review_notes(nil), do: []
+  defp split_review_notes(""), do: []
+  defp split_review_notes(s) when is_binary(s) do
+    s
+    |> String.split(~r/;\s*|\r?\n/)
+    |> Enum.map(&String.trim/1)
+    |> Enum.reject(&(&1 == ""))
+  end
+  defp split_review_notes(_), do: []
 end

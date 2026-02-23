@@ -1,5 +1,5 @@
 #!/bin/bash
-# Launcher script for Synergetics Dictionary TUI (Elixir version)
+# Launcher script for Synergetics Dictionary TUI
 
 SCRIPT_DIR="$(dirname "$0")"
 cd "$SCRIPT_DIR/synergetics_tui" || exit 1
@@ -7,10 +7,7 @@ cd "$SCRIPT_DIR/synergetics_tui" || exit 1
 # Check if database exists
 if [ ! -f "../data/synergetics_dictionary.db" ]; then
     echo "Error: Database not found at data/synergetics_dictionary.db"
-    echo ""
-    echo "Please create the sample database first:"
-    echo "  cd .."
-    echo "  elixir create_sample_database.exs"
+    echo "Please run: elixir scripts/import_cards_to_sqlite.exs"
     exit 1
 fi
 

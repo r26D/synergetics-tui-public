@@ -1,5 +1,10 @@
 #!/bin/bash
-# Launcher script for Synergetics Dictionary TUI (Ink/React version)
+
+# Synergetics Dictionary TUI (Ink/React version)
+# Launcher script
+
+# Increase Node.js memory limit to prevent heap out of memory errors
+export NODE_OPTIONS="--max-old-space-size=4096"
 
 SCRIPT_DIR="$(dirname "$0")"
 cd "$SCRIPT_DIR/synergetics-tui-ink" || exit 1
@@ -7,10 +12,6 @@ cd "$SCRIPT_DIR/synergetics-tui-ink" || exit 1
 # Check if database exists
 if [ ! -f "../data/synergetics_dictionary.db" ]; then
     echo "Error: Database not found at data/synergetics_dictionary.db"
-    echo ""
-    echo "Please create the sample database first:"
-    echo "  cd .."
-    echo "  elixir create_sample_database.exs"
     exit 1
 fi
 
